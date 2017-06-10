@@ -35,6 +35,7 @@ foreach my $gameid (@{ $games->{owned} }) {
     $title =~ s/\x{ae}//g; # ®
 
     my $path = "$download_dir/$title";
+    $path =~ s/://g; # ':' is an invalid characters for Windows
 
     say STDERR "$title ($i/$count)";
 
