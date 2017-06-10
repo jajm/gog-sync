@@ -1,0 +1,40 @@
+# Copy this file to config.yaml before modification
+
+# Login to gog.com with any browser and copy the content of cookie gog_al
+gog_al: REPLACE_ME
+
+# Where you want the files to be downloaded
+dir: REPLACE_ME
+
+# Remove languages for which you don't want to download installers
+languages:
+    - English
+    - Deutsch
+    - español
+    - français
+    - italiano
+    - nederlands
+    - norsk
+    - polski
+    - português
+    - Português do Brasil
+    - slovenský
+    - Türkçe
+    - yкраїнська
+    - русский
+    - Српска
+    - 中文
+    - magyar
+    - český
+    - svenska
+    - Suomio
+    - 日本語
+
+# Remove systems for which you don't want to download installers
+os:
+    - windows
+    - linux
+    - mac
+
+# Download extras ?
+extras: true

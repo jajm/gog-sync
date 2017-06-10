@@ -1,0 +1,93 @@
+#!/usr/bin/env perl
+
+use Modern::Perl;
+
+use FindBin qw($RealBin);
+use YAML qw(LoadFile);
+use Cwd qw(abs_path);
+use IO::Handle;
+
+use lib "$RealBin/../lib";
+use Gog;
+
+my $configpath = abs_path("$RealBin/../config.yaml");
+unless ( -r $configpath ) {
+    say STDERR "No config file found at $configpath. Aborting.";
+    exit(1);
+}
+
+my $config = LoadFile($configpath);
+
+my $download_dir = $config->{dir};
+my $gog = Gog->new($config);
+
+my $games = $gog->games;
+my $count = scalar @{ $games->{owned} };
+say STDERR "Found $count games";
+
+my $i = 1;
+foreach my $gameid (@{ $games->{owned} }) {
+    my $game = $gog->game($gameid);
+    next unless ref $game and ref $game eq 'HASH';
+
+    my $title = $game->{title};
+    $title =~ s/\x{2122}//g; # ™
+    $title =~ s/\x{ae}//g; # ®
+
+    my $path = "$download_dir/$title";
+
+    say STDERR "$title ($i/$count)";
+
+    foreach my $langdownloads (@{ $game->{downloads} }) {
+        my $lang = $langdownloads->[0];
+        unless (grep {$_ eq $lang} @{ $config->{languages} }) {
+            next;
+        }
+
+        foreach my $os (keys %{ $langdownloads->[1] }) {
+            unless (grep {$_ eq $os} @{ $config->{os} }) {
+                next;
+            }
+
+            my $downloads = $langdownloads->[1]->{$os};
+            foreach my $download (@$downloads) {
+                my $url = $download->{manualUrl};
+                my $name = $download->{name};
+                my $size = $download->{size};
+
+                say STDERR "\t$lang/$os - $name ($size)";
+                my $res = $gog->request('https://www.gog.com' . $url);
+                my $downloadUrl = $res->header('Location');
+
+                say "$downloadUrl";
+                say "\tdir=$path/downloads/$lang/$os";
+                say "\tconditional-get=true";
+                say "\tallow-overwrite=true";
+                say "\tauto-file-renaming=false";
+                STDOUT->flush;
+            }
+        }
+    }
+
+    if ($config->{extras}) {
+        foreach my $extra (@{ $game->{extras} }) {
+            my $url = $extra->{manualUrl};
+            my $name = $extra->{name};
+            my $size = $extra->{size};
+
+            say STDERR "\textra - $name ($size)";
+
+            my $res = $gog->request('https://www.gog.com' . $url);
+            my $downloadUrl = $res->header('Location');
+
+            say "$downloadUrl";
+            say "\tdir=$path/extras";
+            say "\tconditional-get=true";
+            say "\tallow-overwrite=true";
+            say "\tauto-file-renaming=false";
+            STDOUT->flush;
+        }
+    }
+
+    $i++;
+}

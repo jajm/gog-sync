@@ -1,0 +1,81 @@
+#!/usr/bin/env perl
+
+use Modern::Perl;
+
+use Number::Bytes::Human qw(format_bytes parse_bytes);
+use FindBin qw($RealBin);
+use YAML qw(LoadFile);
+use Cwd qw(abs_path);
+
+use lib "$RealBin/../lib";
+use Gog;
+
+my $configpath = abs_path("$RealBin/../config.yaml");
+unless ( -r $configpath ) {
+    say STDERR "No config file found at $configpath. Aborting.";
+    exit(1);
+}
+
+my $config = LoadFile($configpath);
+
+my $gog = Gog->new($config);
+
+my $games = $gog->games;
+my $count = scalar @{ $games->{owned} };
+say "Found $count games";
+
+my $i = 1;
+my $totalsize = 0;
+foreach my $gameid (@{ $games->{owned} }) {
+    my $game = $gog->game($gameid);
+    next unless ref $game and ref $game eq 'HASH';
+
+    my $title = $game->{title};
+    $title =~ s/\x{2122}//g; # ™
+    $title =~ s/\x{ae}//g; # ®
+
+    say "$title ($i/$count)";
+
+    my $gametotal = 0;
+    foreach my $langdownloads (@{ $game->{downloads} }) {
+        my $lang = $langdownloads->[0];
+        unless (grep {$_ eq $lang} @{ $config->{languages} }) {
+            next;
+        }
+
+        foreach my $os (keys %{ $langdownloads->[1] }) {
+            unless (grep {$_ eq $os} @{ $config->{os} }) {
+                next;
+            }
+
+            my $downloads = $langdownloads->[1]->{$os};
+            foreach my $download (@$downloads) {
+                my $name = $download->{name};
+                my $size = $download->{size};
+
+                say "\t$lang/$os - $name ($size)";
+
+                $gametotal += parse_bytes($size);
+            }
+        }
+    }
+
+    if ($config->{extras}) {
+        foreach my $extra (@{ $game->{extras} }) {
+            my $name = $extra->{name};
+            my $size = $extra->{size};
+
+            say "\textra - $name ($size)";
+
+            $gametotal += parse_bytes($size);
+        }
+    }
+
+    say "\tSubtotal : " . format_bytes($gametotal);
+
+    $totalsize += $gametotal;
+
+    $i++;
+}
+
+say "Estimated total size : " . format_bytes($totalsize);
