@@ -31,11 +31,14 @@ foreach my $gameid (@{ $games->{owned} }) {
     next unless ref $game and ref $game eq 'HASH';
 
     my $title = $game->{title};
-    $title =~ s/\x{2122}//g; # ™
-    $title =~ s/\x{ae}//g; # ®
+    my $title_for_path = $title;
+    $title_for_path =~ s/\x{2122}//g; # ™
+    $title_for_path =~ s/\x{ae}//g; # ®
+    $title_for_path =~ s/://g; # ':' is an invalid characters for Windows
+    $title_for_path =~ s/\s+$//g;
+    $title_for_path =~ s/^\s+//g;
 
-    my $path = "$download_dir/$title";
-    $path =~ s/://g; # ':' is an invalid characters for Windows
+    my $path = "$download_dir/$title_for_path";
 
     say STDERR "$title ($i/$count)";
 
